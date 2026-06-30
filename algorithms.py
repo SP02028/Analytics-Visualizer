@@ -185,6 +185,13 @@ def closeness_centrality(graph, desired_result, normal):
 def betweenness_centrality(graph, desired_result, normal):
     #Betweenness Centrality
     #nodes that are important are those that lie on many shortest paths between other nodes
+    betCent = nx.betweenness_centrality(to_networkx(graph))
+    if desired_result == "max":
+        return max(betCent, key=betCent.get), betCent[max(betCent, key=betCent.get)]
+    elif desired_result == "min":
+        return min(betCent, key=betCent.get), betCent[min(betCent, key=betCent.get)]
+    return betCent
+
 def pagerank():
     # PageRank
     pass
