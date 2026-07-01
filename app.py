@@ -1,5 +1,21 @@
 from flask import Flask, render_template, request, jsonify
 from algorithms import bfs, dfs, dijkstra, all_paths, triadic_closure, smallest_robust_nodes, remove_nodes_disconnect, remove_edges_disconnect, smallest_robust_edges, get_node_degree, to_networkx
+from algorithms import (
+    eccentricity,
+    center,
+    periphery,
+    WCC,
+    degree_centrality,
+    closeness_centrality,
+    betweenness_centrality,
+    betweenness_centrality_approx,
+    betweenness_subset,
+    edge_betweenness_centrality,
+    edge_betweenness_centrality_approx,
+    edge_betweenness_subset,
+    pagerank,
+    hubs_and_authorities,
+)
 from graph import Graph
 import networkx as nx
 
@@ -7,7 +23,7 @@ app = Flask(__name__)
 
 def cytoscape_to_graph(elements):
     graph = Graph(directed=False)
-    for element in elements:
+    for elem in elements:
         if 'source' in elem['data']:
             source = elem['data']['source']
             target = elem['data']['target']
@@ -157,7 +173,7 @@ def api_diameter():
     try:
         data = request.json()
         graph = cytoscape_to_graph(data['graph'])
-        nx_graph = to_networkx(graph)
+        nx_graph = to_networkx(graph)          # <-- add this back
         if nx.is_connected(nx_graph):
             diameter = nx.diameter(nx_graph.to_undirected())
             return jsonify({'diameter': diameter})
@@ -170,7 +186,7 @@ def api_radius():
     try:
         data = request.json()
         graph = cytoscape_to_graph(data['graph'])
-        nx_graph = to_networkx(graph)
+        nx_graph = to_networkx(graph)          # <-- add this back
         if nx.is_connected(nx_graph):
             radius = nx.radius(nx_graph.to_undirected())
             return jsonify({'radius': radius})
@@ -195,58 +211,183 @@ def api_scc():
         return jsonify({'error': str(e)}), 400
 @app.route('/api/eccentricity', methods=['POST'])
 def api_eccentricity():
-    pass
+    try:
+        data = request.json()
+        graph = cytoscape_to_graph(data['graph'])
+        return jsonify({'eccentricity': eccentricity(graph)})
+    except Exception as e:
+        return jsonify({'error': str(e)}), 400
 
 @app.route('/api/center', methods=['POST'])
 def api_center():
-    pass
+    try:
+        data = request.json()
+        graph = cytoscape_to_graph(data['graph'])
+        return jsonify({'center': center(graph)}    )
+    except Exception as e:
+        return jsonify({'error': str(e)}), 400
 
 @app.route('/api/periphery', methods=['POST'])
 def api_periphery():
-    pass
+    try:
+        data = request.json()
+        graph = cytoscape_to_graph(data['graph'])
+        return jsonify({'periphery': periphery(graph)}) 
+    except Exception as e:
+        return jsonify({'error': str(e)}), 400
 
 @app.route('/api/wcc', methods=['POST'])
 def api_wcc():
-    pass
+    try:
+        data = request.json()
+        graph = cytoscape_to_graph(data['graph'])
+        connected, components = WCC(graph)   
+        return jsonify({
+            'num_components': connected,
+            'component_sizes': [len(comp) for comp in components] if components else [],
+            'highlighted_nodes': [list(comp) for comp in components] if components else []
+        })
+    except Exception as e:
+        return jsonify({'error': str(e)}), 400
 
 @app.route('/api/degree_centrality', methods=['POST'])
 def api_degree_centrality():
-    pass
+    try:
+        data = request.json
+        graph = cytoscape_to_graph(data['graph'])
 
+        desired_result = data.get("desired_result", "all")
+        desired_num = data.get("desired_num", 5)
+
+        if desired_result == "all":
+            desired_result = None
+            desired_num = None
+
+        result = degree_centrality(
+            graph,
+            directed=False,
+            degree_type="both",
+            desired_result=desired_result,
+            desired_num=desired_num
+        )
+
+        return jsonify({
+            "degree_centrality": result
+        })
+
+    except Exception as e:
+        return jsonify({"error": str(e)}), 400
 @app.route('/api/closeness_centrality', methods=['POST'])
 def api_closeness_centrality():
-    pass
+    try:
+        #this follows the same structure as the degree_centrality endpoint, but for closeness centrality
+        data = request.json
+        graph = cytoscape_to_graph(data['graph'])
+        
+        desired_result = data.get("desired_result", "all")
+        normal = data.get("normal", True)
+        desired_num = data.get("desired_num", 5)
+
+        if desired_result == "all":
+            desired_result = None
+            desired_num = None
+        result = closeness_centrality(
+            graph,
+            desired_result=desired_result,
+            normal=normal,
+            desired_num=desired_num
+        )
+        return jsonify({
+            "closeness_centrality": result
+        })
+    except Exception as e:
+        return jsonify({'error': str(e)}), 400
 
 @app.route('/api/betweenness_centrality', methods=['POST'])
 def api_betweenness_centrality():
-    pass
+    try:
+        data = request.json
+        graph = cytoscape_to_graph(data['graph'])
+        result = betweenness_centrality(graph, desired_result = data.get('desired_result', 'all'), normal = data.get('normal', True), end = data.get('end', False), desired_num = data.get('desired_num', 5))
+        return jsonify({'betweenness_centrality': result})
+    except Exception as e:
+        return jsonify({'error': str(e)}), 400
 
 @app.route('/api/betweenness_centrality_approx', methods=['POST'])
 def api_betweenness_centrality_approx():
-    pass
+    try:
+        data = request.json
+        graph = cytoscape_to_graph(data['graph'])
+        result = betweenness_centrality_approx(graph, desired_result = data.get('desired_result', 'all'), sample = data.get('sample'),normal = data.get('normal', True), end = data.get('end', False), desired_num = data.get('desired_num', 5))
+        return jsonify({'betweenness_centrality_approx': result})
+    except Exception as e:
+        return jsonify({'error': str(e)}), 400
 
 @app.route('/api/betweenness_subset', methods=['POST'])
 def api_betweenness_subset():
-    pass
+    try:
+        data = request.json
+        graph = cytoscape_to_graph(data['graph'])
+        nodes = data.get('nodes', [])
+        if not nodes:
+            return jsonify({'error': 'No nodes provided'}), 400
+        result = betweenness_subset(graph, desired_result = data.get('desired_result', 'all'), normal = data.get('normal', True), end = data.get('end', False), desired_num = data.get('desired_num', 5), sources= nodes, targets=nodes)
+        return jsonify({'betweenness_centrality': result})
+    except Exception as e:
+        return jsonify({'error': str(e)}), 400
 
 @app.route('/api/edge_betweenness_centrality', methods=['POST'])
 def api_edge_betweenness_centrality():
-    pass
+    try:
+        data = request.json
+        graph = cytoscape_to_graph(data['graph'])
+        result = edge_betweenness_centrality(graph, desired_result = data.get('desired_result', 'all'), normal = data.get('normal', True), desired_num = data.get('desired_num', 5), end = data.get('end', False))
+        return jsonify({'edge_betweenness_centrality': result})
+    except Exception as e:
+        return jsonify({'error': str(e)}), 400
 
 @app.route('/api/edge_betweenness_centrality_approx', methods=['POST'])
 def api_edge_betweenness_centrality_approx():
-    pass
+    try:
+        data = request.json
+        graph = cytoscape_to_graph(data['graph'])
+        result = edge_betweenness_centrality_approx(graph, desired_result = data.get('desired_result', 'all'), sample = data.get('sample'), normal = data.get('normal', True), desired_num = data.get('desired_num', 5), end = data.get('end', False))
+        return jsonify({'edge_betweenness_centrality_approx': result})
+    except Exception as e:
+        return jsonify({'error': str(e)}), 400
 
 @app.route('/api/edge_betweenness_subset', methods=['POST'])
 def api_edge_betweenness_subset():
-    pass
+    try:
+        data = request.json
+        graph = cytoscape_to_graph(data['graph'])
+        edges = data.get('edges', [])
+        if not edges:
+            return jsonify({'error': 'No edges provided'}), 400
+        result = edge_betweenness_subset(graph, desired_result = data.get('desired_result', 'all'), normal = data.get('normal', True), desired_num = data.get('desired_num', 5), sources= edges, targets=edges, end = data.get('end', False))
+        return jsonify({'edge_betweenness_centrality': result})
+    except Exception as e:
+        return jsonify({'error': str(e)}), 400
 
 @app.route('/api/pagerank', methods=['POST'])
 def api_pagerank():
-    pass
+    try:
+        data = request.json
+        graph = cytoscape_to_graph(data['graph'])
+        result = pagerank(graph, desired_result = data.get('desired_result', 'all'), desired_num = data.get('desired_num', 5))
+        return jsonify({'pagerank': result})
+    except Exception as e:
+        return jsonify({'error': str(e)}), 400
 
 @app.route('/api/hits', methods=['POST'])
 def api_hits():
-    pass
+    try:
+        data = request.json
+        graph = cytoscape_to_graph(data['graph'])
+        result = hubs_and_authorities(graph, desired_result = data.get('desired_result', 'all'),desired_num = data.get('desired_num', 5))
+        return jsonify({'hits': result})
+    except Exception as e:
+        return jsonify({'error': str(e)}), 400
+
 if __name__ == '__main__':
     app.run(debug=True, port = 5000)
